@@ -1,0 +1,52 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+@model googleMapInsertPOC.ViewModels.MapDataVM
+<h2>google maps POC start page</h2>
+<p>How to use:<br/>
+- Advanced or simple map requires at bare minimum an API key and an zip address. 
+ If you want to see a specific address, please fill out the rest of the address data.<br />
+- Simple Map: only requires API key and will show a marker and circular boundary around the area.<br />
+- Advanced Map: requires a Map ID to be setup and used, adds an additonal option to see a boundary around a given zipcode.<br />
+</p>
+<div>
+    @using (Html.BeginForm("MapExampleAdvanced", "Home", FormMethod.Post))
+    {
+
+        <div class="form-group">
+            @Html.LabelFor(m => m.API)
+            @Html.TextBoxFor(m => m.API, new { @class = "form-control" })
+        </div>
+        <div class="form-group">
+            @Html.LabelFor(m => m.MapID)
+            @Html.TextBoxFor(m => m.MapID, new { @class = "form-control" })
+        </div>
+        <div class="form-group">
+            @Html.LabelFor(m => m.ZIP)
+            @Html.TextBoxFor(m => m.ZIP, new { @class = "form-control" })
+        </div>
+        <div class="form-group">
+            @Html.LabelFor(m => m.Address)
+            @Html.TextBoxFor(m => m.Address, new { @class = "form-control" })
+        </div>
+        <div class="form-group">
+            @Html.LabelFor(m => m.City)
+            @Html.TextBoxFor(m => m.City, new { @class = "form-control" })
+        </div>
+        <div class="form-group">
+            @Html.LabelFor(m => m.State)
+            @Html.TextBoxFor(m => m.State, new { @class = "form-control" })
+        </div>
+
+
+        <button type="submit"
+                formaction="@Url.Action("MapExampleAdvanced", "Home")">
+            Advanced Map Example
+        </button>
+
+        <button type="submit"
+                formaction="@Url.Action("MapExampleSimple", "Home")">
+            Simple Map Example
+        </button>
+    }
+</div>

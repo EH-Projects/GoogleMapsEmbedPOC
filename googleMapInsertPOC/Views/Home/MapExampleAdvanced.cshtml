@@ -1,0 +1,202 @@
+﻿@model googleMapInsertPOC.ViewModels.MapDataVM
+@{
+    ViewBag.Title = "MapExample";
+}
+<style>
+    .map-layout {
+        display: flex;
+        gap: 20px;
+    }
+
+    .left, .right {
+        width: 50%;
+        height: 500px;
+    }
+</style>
+
+@Html.HiddenFor(m => m.ZIP)
+@Html.HiddenFor(m => m.State)
+@Html.HiddenFor(m => m.City)
+@Html.HiddenFor(m => m.Address)
+@Html.HiddenFor(m => m.API)
+@Html.HiddenFor(m => m.MapID)
+<div>
+
+    <h2>Map Example</h2>
+
+    <div class="map-layout">
+        <div class="left">
+            <h5>Different visibility options to add</h5>
+            <div class="form-check">
+                <input type="checkbox" id="pinpoint" class="form-check-input" />
+                <label class="form-check-label" for="pinpoint">PinPoint</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="circle" class="form-check-input" />
+                <label class="form-check-label" for="circle">Circle around center</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="zipBoundary" class="form-check-input" />
+                <label class="form-check-label" for="zipBoundary">Boundary around zip</label>
+            </div>
+        </div>
+
+        <div class="right">
+            <div id="map" style="width:100%; height:100%;"></div>
+            <p>ZIP Code: <span id="zipDisplay"></span></p>
+            <p>Coordinates: <span id="coordsDisplay"></span></p>
+        </div>
+    </div>
+    <a href="/Home/Index" class="btn btn-primary">Back</a>
+</div>
+
+<script>
+    const zipCode = document.getElementById("ZIP").value;
+    const address = document.getElementById("Address").value;
+    const state = document.getElementById("State").value;
+    const city = document.getElementById("City").value;
+    const mapID = document.getElementById("MapID").value;
+    const pinpoint = document.getElementById("pinpoint");
+    const circle = document.getElementById("circle");
+    const zipBoundary = document.getElementById("zipBoundary");
+    let map;
+    let AdvancedMarkerElementClass
+    let pin;
+    let mapCircle;
+    let boundary;
+    let geoCodeData;
+    let zipData;
+
+    document.getElementById("zipDisplay").textContent = zipCode;
+
+    pinpoint.addEventListener('change', updateMap);
+    circle.addEventListener('change', updateMap);
+    zipBoundary.addEventListener('change', updateMap);
+
+    const featureStyleOptions = {
+        strokeColor: "#810FCB",
+        strokeOpacity: 1.0,
+        strokeWeight: 3.0,
+        fillColor: "#810FCB",
+        fillOpacity: 0.35
+    };
+
+    function getZipLocationData(centerLocation) {
+        const geocoder = new google.maps.Geocoder();
+        return new Promise((resolve, reject) => {
+            geocoder.geocode({ address: centerLocation }, (results, status) => {
+                if (status !== "OK" || !results.length) {
+                    reject("Geocode failed: " + status);
+                    return;
+                }
+
+                const result = results[0];
+
+                resolve({
+                    placeId: result.place_id,
+                    center: {
+                        lat: result.geometry.location.lat(),
+                        lng: result.geometry.location.lng()
+                    }
+                });
+            });
+        });
+    }
+
+    function deleteMarkers() {
+        if (boundary != null && !zipBoundary.checked) {
+            boundary.style = null;
+            boundary = null;
+        }
+        if (mapCircle != null && !circle.checked) {
+            mapCircle.setMap(null)
+            mapCircle = null;
+        }
+        if (pin != null && !pinpoint.checked) {
+            pin.map = null;
+            pin = null;
+        }
+
+    }
+
+    async function initMap() {
+
+        const { Map } = await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        AdvancedMarkerElementClass = AdvancedMarkerElement;
+
+        let centerLocation = zipCode;
+        if (address && city && state) {
+            centerLocation = `${address}, ${city}, ${state}`
+            geoCodeData = await getZipLocationData(centerLocation);
+            zipData = await getZipLocationData(zipCode);
+        }
+        else {
+            geoCodeData = await getZipLocationData(zipCode);
+            zipData = geoCodeData;
+        }
+
+        pinpoint.checked = true;
+
+        document.getElementById("coordsDisplay").textContent =
+            parseFloat(geoCodeData.center.lat).toFixed(6) + ", " + parseFloat(geoCodeData.center.lng).toFixed(6);
+
+        map = new Map(document.getElementById("map"), {
+            center: geoCodeData.center,
+            zoom: 10,
+            mapId: mapID
+        });
+
+        pin = new AdvancedMarkerElement({
+            position: geoCodeData.center,
+            map: map
+        });
+
+
+    }
+
+    function updateMap() {
+        deleteMarkers();
+
+        if (pinpoint.checked && pin == null) {
+            pin = new AdvancedMarkerElementClass({
+                position: geoCodeData.center,
+                map: map
+            });
+
+        }
+        //the radius option is in meters so its 10 miles in meters
+        if (circle.checked && mapCircle == null) {
+            mapCircle = new google.maps.Circle({
+                map: map,
+                center: geoCodeData.center,
+                radius: 16093.4,
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: "#FF0000",
+                fillOpacity: 0.2
+            });
+        }
+        if (zipBoundary.checked && boundary == null) {
+            boundary = map.getFeatureLayer(google.maps.FeatureType.POSTAL_CODE);
+
+            boundary.style = (options) => {
+                if (options.feature.placeId === zipData.placeId) {
+                    return featureStyleOptions;
+                }
+
+                return {
+                    fillOpacity: 0,
+                    strokeOpacity: 0
+                };
+            };
+        }
+    }
+
+    window.initMap = initMap;
+
+</script>
+
+<script async src="https://maps.googleapis.com/maps/api/js?key=@Model.API&loading=async&callback=initMap&v=weekly"></script>
+
